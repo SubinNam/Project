@@ -1,0 +1,66 @@
+<!doctype html>
+<html>
+<head>
+<meta charset='UTF-8'><meta name='viewport' content='width=device-width initial-scale=1'>
+<title>SB2</title>
+</head>
+<body><p>&nbsp;</p>
+<pre><code class='language-r' lang='r'>require(caret)
+install.packages(&quot;randomForest&quot;)
+require(randomForest)
+</code></pre>
+<pre><code class='language-r' lang='r'>## DATA Loading#
+traindata &lt;- read.csv(&quot;pml-training.csv&quot;, na.strings = c(&quot;NA&quot;, &quot;#DIV/0!&quot;, &quot;&quot;))
+testdata  &lt;- read.csv(&quot;pml-testing.csv&quot;, na.strings = c(&quot;NA&quot;, &quot;#DIV/0!&quot;, &quot;&quot;))
+# remove NA columns for the training and testing data
+comps &lt;- complete.cases(t(traindata)) &amp; complete.cases(t(testdata))
+traindata1 &lt;- traindata[,comps]
+testdata1  &lt;- testdata[,comps]
+# Drop the first 7 columns as they&#39;re unnecessary for predicting.
+traindata2&lt;- traindata1[,8:length(colnames(traindata1))]
+testdata2 &lt;- testdata1[,8:length(colnames(testdata1))]
+</code></pre>
+<pre><code class='language-r' lang='r'>#Cross VAlidation#
+set.seed(32323) ; require(caret)
+in.training &lt;- createDataPartition(traindata2$classe, p=0.75, list=F)
+Train &lt;- traindata2[in.training, ]
+Cross &lt;- traindata2[-in.training, ]
+Train$classe = as.factor(Train$classe)
+</code></pre>
+<pre><code class='language-r' lang='r'>## Decision Tree # 
+require(rpart); require(caret)
+Dtree &lt;- train(Train$classe ~ ., data=Train, method=&quot;class&quot;)
+pDtree &lt;- predict(Dtree, newdata = testdata2, type = &quot;class&quot;)
+Val_DT &lt;- predict(Dtree, newdata = Cross, type = &quot;class&quot;)
+table(pDtree) ; print(pDtree)
+table_mat &lt;- table(Cross$classe, Val_DT)
+accuracy_Test &lt;- sum(diag(table_mat)) / sum(table_mat)
+print(paste(&#39;Accuracy for test&#39;, accuracy_Test)) #Accuracy : 0.7488
+Cross$classe = as.factor(Cross$classe)
+confusionMatrix(Val_DT,Cross$classe)
+</code></pre>
+<pre><code class='language-r' lang='r'>#Modeling : Randomforest #
+modFit &lt;- randomForest(Train$classe~., data = Train, importance=T)
+modFit    #Please, take time. It may takes a few minitues:) #
+testdata2$classe = as.factor(testdata2$classe)
+pred1 &lt;-predict(modFit,Train)
+table(pred1) ; table(Train$classe)
+confusionMatrix(pred1,Train$classe) #OOB estimate of error rate: 0.46%
+</code></pre>
+<h2 id='the-results-on-the-validation-and-the-test-set'>The results on the validation and the test set</h2>
+<pre><code class='language-r' lang='r'>Cross$classe = as.factor(Cross$classe)
+valid &lt;- predict(modFit, newdata=Cross)
+confusionMatrix(valid,Cross$classe)  #Accuracy : 0.9951
+</code></pre>
+<pre><code># the results on the test set
+test &lt;- predict(modFit, newdata=testdata2)
+print(&quot;Classification&quot;); test
+</code></pre>
+<p>[1] &quot;Classification&quot;
+ 1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+ B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
+Levels: A B C D E</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+</body>
+</html>
